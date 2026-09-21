@@ -130,6 +130,7 @@ a{color:inherit;}
 .card:hover{transform:translateY(-2px);box-shadow:var(--shadow-hover);}
 .card-type-link{border-left-color:var(--teal);}
 .card-type-credential{border-left-color:var(--accent);}
+.card-type-file{border-left-color:var(--muted);}
 .card-text{grid-column:1/-1;}
 .card-title-row{display:flex;align-items:center;gap:9px;}
 .card-avatar{width:24px;height:24px;border-radius:7px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;}
@@ -443,7 +444,7 @@ a{color:inherit;}
     renderMain();
   });
   function blockMatches(b, q){
-    var hay = [b.title,b.body,b.url,b.login].filter(Boolean).join(" ").toLowerCase();
+    var hay = [b.title,b.body,b.url,b.login,b.file_name].filter(Boolean).join(" ").toLowerCase();
     return hay.indexOf(q) !== -1;
   }
 
@@ -595,6 +596,16 @@ a{color:inherit;}
         '</div>';
     }
 
+    if(b.type === "file"){
+      var ext = (b.file_name||"").split(".").pop().toUpperCase();
+      return '<div class="card card-type-file">'+actions+
+        '<div class="card-title-row" style="'+titlePad+'">'+avatar+'<div class="card-title">'+esc(b.title||b.file_name||"Arquivo")+'</div></div>'+
+        (b.file_name? '<div class="mail-row"><span class="cred-val">📄 '+esc(b.file_name)+'</span></div>' : '')+
+        (b.body? '<div class="card-body">'+esc(b.body)+'</div>' : '')+
+        (b.file_url? '<a class="card-open" href="'+esc(b.file_url)+'" target="_blank" rel="noopener">Abrir / baixar ↗</a>' : '')+
+        '</div>';
+    }
+
     if(b.type === "credential"){
       var rows = "";
       if(b.login) rows += '<div class="cred-row"><span class="cred-label">login</span><span class="cred-val">'+esc(b.login)+'</span><button class="icon-btn" data-copy="'+esc(b.login)+'" title="Copiar">⧉</button></div>';
@@ -644,7 +655,10 @@ a{color:inherit;}
     root.querySelectorAll("[data-del]").forEach(function(el){
       el.addEventListener("click", async function(){
         if(confirm("Excluir este bloco?")){
-          await sb.from("blocks").delete().eq("id", el.getAttribute("data-del"));
+          var bId = el.getAttribute("data-del");
+          var blk = state.blocks.find(function(x){return x.id===bId;});
+          await sb.from("blocks").delete().eq("id", bId);
+          if(blk && blk.file_path){ sb.storage.from("files").remove([blk.file_path]); }
         }
       });
     });
@@ -715,6 +729,7 @@ a{color:inherit;}
         '<button type="button" class="type-opt" data-t="text">Texto</button>'+
         '<button type="button" class="type-opt" data-t="link">Link</button>'+
         '<button type="button" class="type-opt" data-t="credential">Credencial</button>'+
+        '<button type="button" class="type-opt" data-t="file">Arquivo</button>'+
       '</div></div>'+
       '<div class="field"><label>Grupo (opcional — agrupa cards com o mesmo nome)</label><input type="text" id="f-group" value="'+esc(groupVal)+'"></div>'+
       '<div class="field"><label>Título</label><input type="text" id="f-title" value="'+esc(block? block.title||"" : "")+'"></div>'+
@@ -732,6 +747,12 @@ a{color:inherit;}
       } else if(t === "link"){
         d.innerHTML =
           '<div class="field"><label>URL</label><input type="text" id="f-url" value="'+esc(block? block.url||"" : "")+'"></div>'+
+          '<div class="field"><label>Observação (opcional)</label><textarea id="f-body">'+esc(block? block.body||"" : "")+'</textarea></div>';
+      } else if(t === "file"){
+        var existingFile = (block && block.file_name) ? '<div class="field"><label>Arquivo atual</label><div class="cred-row"><span class="cred-val">'+esc(block.file_name)+'</span></div></div>' : "";
+        d.innerHTML =
+          existingFile+
+          '<div class="field"><label>'+(block&&block.file_name? "Substituir arquivo (opcional)" : "Arquivo")+'</label><input type="file" id="f-file"></div>'+
           '<div class="field"><label>Observação (opcional)</label><textarea id="f-body">'+esc(block? block.body||"" : "")+'</textarea></div>';
       } else {
         d.innerHTML =
@@ -757,6 +778,7 @@ a{color:inherit;}
       overlay.querySelector("#f-del").addEventListener("click", async function(){
         if(confirm("Excluir este bloco?")){
           await sb.from("blocks").delete().eq("id", block.id);
+          if(block.file_path){ sb.storage.from("files").remove([block.file_path]); }
           document.body.removeChild(overlay);
         }
       });
@@ -769,6 +791,7 @@ a{color:inherit;}
       var bodyEl = overlay.querySelector("#f-body");
       data.body = bodyEl ? bodyEl.value.trim() : null;
       data.url = null; data.login = null; data.password = null;
+      data.file_url = null; data.file_name = null; data.file_path = null;
       if(type === "link"){
         data.url = (overlay.querySelector("#f-url").value||"").trim();
         if(!data.url){ toast("Informe a URL."); return; }
@@ -776,6 +799,27 @@ a{color:inherit;}
         data.login = (overlay.querySelector("#f-login").value||"").trim() || null;
         data.password = (overlay.querySelector("#f-pass").value||"").trim() || null;
         data.url = (overlay.querySelector("#f-url").value||"").trim() || null;
+      } else if(type === "file"){
+        var fileInput = overlay.querySelector("#f-file");
+        var chosenFile = fileInput && fileInput.files && fileInput.files[0];
+        if(chosenFile){
+          if(chosenFile.size > 20*1024*1024){ toast("Arquivo muito grande (máx. 20MB)."); return; }
+          var saveBtn = overlay.querySelector("#f-save");
+          saveBtn.disabled = true; saveBtn.textContent = "Enviando…";
+          var safeName = chosenFile.name.replace(/[^a-zA-Z0-9.\-_]/g, "_");
+          var path = Date.now().toString(36)+"-"+Math.random().toString(36).slice(2,8)+"-"+safeName;
+          var upRes = await sb.storage.from("files").upload(path, chosenFile, {upsert:true});
+          saveBtn.disabled = false; saveBtn.textContent = "Salvar";
+          if(upRes.error){ toast("Erro ao enviar arquivo: "+upRes.error.message); return; }
+          var pub = sb.storage.from("files").getPublicUrl(path);
+          data.file_url = pub.data.publicUrl;
+          data.file_name = chosenFile.name;
+          data.file_path = path;
+        } else if(!isNew && block.file_url){
+          data.file_url = block.file_url; data.file_name = block.file_name; data.file_path = block.file_path;
+        } else {
+          toast("Selecione um arquivo."); return;
+        }
       }
       if(!title && type!=="text"){ toast("Dê um título ao bloco."); return; }
       var groupOrTabChanged = isNew || (block.tabId !== chosenTabId) || ((block.group||"") !== (group||""));
