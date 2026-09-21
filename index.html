@@ -563,6 +563,17 @@ a{color:inherit;}
 
     if(b.type === "link"){
       var isMail = (b.url||"").toLowerCase().indexOf("mailto:") === 0;
+      var isFile = (b.url||"").toLowerCase().indexOf("file://") === 0;
+      if(isFile){
+        var path = decodeURIComponent(b.url.replace(/^file:\/\/\//,""));
+        return '<div class="card card-type-link">'+actions+
+          '<div class="card-title-row" style="'+titlePad+'">'+avatar+'<div class="card-title">'+esc(b.title||path)+'</div></div>'+
+          '<div class="card-url" style="display:block;">'+esc(path)+'</div>'+
+          '<div class="url-row"><button class="icon-btn" data-copy="'+esc(b.url)+'" title="Copiar caminho">⧉ copiar caminho</button></div>'+
+          '<div class="card-body">Arquivo de rede — não abre com clique (bloqueio do navegador). Copie o caminho e cole na barra de endereços ou no Explorador de Arquivos, num computador da rede da empresa.</div>'+
+          (b.body? '<div class="card-body">'+esc(b.body)+'</div>' : '')+
+          '</div>';
+      }
       if(isMail){
         var addr = b.url.slice(7);
         return '<div class="card card-type-link">'+actions+
