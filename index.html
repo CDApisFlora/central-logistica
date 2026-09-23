@@ -816,7 +816,7 @@ a{color:inherit;}
         d.innerHTML = '<div class="field"><label>Texto</label><textarea id="f-body">'+esc(block? block.body||"" : "")+'</textarea></div>';
       } else if(t === "link"){
         d.innerHTML =
-          '<div class="field"><label>URL</label><input type="text" id="f-url" value="'+esc(block? block.url||"" : "")+'"></div>'+
+          '<div class="field"><label>URL (ou só o e-mail, ex.: nome@empresa.com.br)</label><input type="text" id="f-url" value="'+esc(block? block.url||"" : "")+'"></div>'+
           '<div class="field"><label>Observação (opcional)</label><textarea id="f-body">'+esc(block? block.body||"" : "")+'</textarea></div>';
       } else if(t === "file"){
         var existingFile = (block && block.file_name) ? '<div class="field"><label>Arquivo atual</label><div class="cred-row"><span class="cred-val">'+esc(block.file_name)+'</span></div></div>' : "";
@@ -865,6 +865,12 @@ a{color:inherit;}
       if(type === "link"){
         data.url = (overlay.querySelector("#f-url").value||"").trim();
         if(!data.url){ toast("Informe a URL."); return; }
+        var lowerUrl = data.url.toLowerCase();
+        if(lowerUrl.indexOf("malito:") === 0){
+          data.url = "mailto:"+data.url.slice(7);
+        } else if(lowerUrl.indexOf("mailto:") !== 0 && lowerUrl.indexOf("://") === -1 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.url)){
+          data.url = "mailto:"+data.url;
+        }
       } else if(type === "credential"){
         data.login = (overlay.querySelector("#f-login").value||"").trim() || null;
         data.password = (overlay.querySelector("#f-pass").value||"").trim() || null;
