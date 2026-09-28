@@ -147,6 +147,11 @@ a{color:inherit;}
 .card-open{display:inline-flex;align-items:center;gap:5px;margin-top:2px;font-size:12.5px;color:var(--teal);font-weight:600;}
 .cred-row{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:13px;background:var(--surface-2);border-radius:6px;padding:6px 8px;}
 .mail-row{display:flex;align-items:center;gap:8px;font-size:13px;background:var(--surface-2);border-radius:6px;padding:6px 8px;}
+.tracker-row{display:flex;gap:8px;margin-top:2px;}
+.tracker-input{flex:1;min-width:0;padding:8px 10px;border-radius:7px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-family:var(--mono);font-size:13px;}
+.tracker-input:focus{outline:none;border-color:var(--accent);}
+.tracker-go{white-space:nowrap;padding:8px 14px;font-size:13px;}
+.card-type-tracker{border-left-color:var(--teal);}
 .cred-label{color:var(--muted);font-family:var(--sans);font-size:11px;min-width:42px;}
 .cred-val{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .icon-btn{border:none;background:transparent;color:var(--muted);padding:2px 5px;border-radius:5px;font-size:13px;text-decoration:none;display:inline-flex;align-items:center;}
@@ -676,6 +681,18 @@ a{color:inherit;}
         '</div>';
     }
 
+    if(b.type === "tracker"){
+      var trkId = "trk-"+b.id;
+      return '<div class="card card-type-tracker">'+actions+
+        '<div class="card-title-row" style="'+titlePad+'">'+avatar+'<div class="card-title">'+esc(b.title||"Rastreio")+'</div></div>'+
+        (b.body? '<div class="card-body">'+esc(b.body)+'</div>' : '')+
+        '<div class="tracker-row">'+
+          '<input type="text" class="tracker-input" id="'+trkId+'" placeholder="Número da NF" inputmode="numeric">'+
+          '<button class="btn btn-primary tracker-go" data-tracker-url="'+esc(b.url||"")+'" data-tracker-input="'+trkId+'">Rastrear ↗</button>'+
+        '</div>'+
+        '</div>';
+    }
+
     if(b.type === "credential"){
       var rows = "";
       if(b.login) rows += '<div class="cred-row"><span class="cred-label">login</span><span class="cred-val">'+esc(b.login)+'</span><button class="icon-btn" data-copy="'+esc(b.login)+'" title="Copiar">⧉</button></div>';
@@ -691,6 +708,25 @@ a{color:inherit;}
   }
 
   function bindCardEvents(root){
+    root.querySelectorAll("[data-tracker-url]").forEach(function(el){
+      el.addEventListener("click", function(){
+        var tmpl = el.getAttribute("data-tracker-url")||"";
+        var inputEl = document.getElementById(el.getAttribute("data-tracker-input"));
+        var nf = (inputEl && inputEl.value || "").trim();
+        if(!nf){ toast("Informe o número da NF."); if(inputEl) inputEl.focus(); return; }
+        var finalUrl = tmpl.split("{NF}").join(encodeURIComponent(nf));
+        window.open(finalUrl, "_blank", "noopener");
+      });
+    });
+    root.querySelectorAll(".tracker-input").forEach(function(el){
+      el.addEventListener("keydown", function(e){
+        if(e.key === "Enter"){
+          var row = el.closest(".tracker-row");
+          var btn = row && row.querySelector(".tracker-go");
+          if(btn) btn.click();
+        }
+      });
+    });
     root.querySelectorAll("[data-copy]").forEach(function(el){
       el.addEventListener("click", function(){ copyText(el.getAttribute("data-copy")); });
     });
@@ -800,6 +836,7 @@ a{color:inherit;}
         '<button type="button" class="type-opt" data-t="link">Link</button>'+
         '<button type="button" class="type-opt" data-t="credential">Credencial</button>'+
         '<button type="button" class="type-opt" data-t="file">Arquivo</button>'+
+        '<button type="button" class="type-opt" data-t="tracker">Rastreio</button>'+
       '</div></div>'+
       '<div class="field"><label>Grupo (opcional — agrupa cards com o mesmo nome)</label><input type="text" id="f-group" value="'+esc(groupVal)+'"></div>'+
       '<div class="field"><label>Título</label><input type="text" id="f-title" value="'+esc(block? block.title||"" : "")+'"></div>'+
@@ -823,6 +860,10 @@ a{color:inherit;}
         d.innerHTML =
           existingFile+
           '<div class="field"><label>'+(block&&block.file_name? "Substituir arquivo (opcional)" : "Arquivo")+'</label><input type="file" id="f-file"></div>'+
+          '<div class="field"><label>Observação (opcional)</label><textarea id="f-body">'+esc(block? block.body||"" : "")+'</textarea></div>';
+      } else if(t === "tracker"){
+        d.innerHTML =
+          '<div class="field"><label>Link de rastreio (use {NF} no lugar do número da nota)</label><input type="text" id="f-url" placeholder="https://www.braspress.com.br/w/tracking/search?cnpj=49345358000145&documentType=NOTAFISCAL&numero={NF}&isSite=true" value="'+esc(block? block.url||"" : "")+'"></div>'+
           '<div class="field"><label>Observação (opcional)</label><textarea id="f-body">'+esc(block? block.body||"" : "")+'</textarea></div>';
       } else {
         d.innerHTML =
@@ -896,6 +937,10 @@ a{color:inherit;}
         } else {
           toast("Selecione um arquivo."); return;
         }
+      } else if(type === "tracker"){
+        data.url = (overlay.querySelector("#f-url").value||"").trim();
+        if(!data.url){ toast("Informe o link de rastreio."); return; }
+        if(data.url.indexOf("{NF}") === -1){ toast("O link precisa conter {NF} no lugar do número da nota."); return; }
       }
       if(!title && type!=="text"){ toast("Dê um título ao bloco."); return; }
       var groupOrTabChanged = isNew || (block.tabId !== chosenTabId) || ((block.group||"") !== (group||""));
