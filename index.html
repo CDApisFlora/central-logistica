@@ -565,19 +565,6 @@ a{color:inherit;}
     titleEl.textContent = (tab.icon||"") + " " + tab.name;
 
     var blocks = state.blocks.filter(function(b){ return b.tabId === tab.id; });
-    var trackerBlocks = blocks.filter(function(b){ return b.type === "tracker"; });
-    var searchAllHtml = "";
-    if(trackerBlocks.length >= 2){
-      searchAllHtml = '<div class="search-all-bar">'+
-        '<div class="search-all-label">🔎 Buscar NF em todas as transportadoras desta aba</div>'+
-        '<div class="tracker-row">'+
-          '<input type="text" class="tracker-input" id="search-all-nf" placeholder="Número da NF" inputmode="numeric">'+
-          '<button class="btn btn-primary tracker-go" id="search-all-go">Gerar links ↗</button>'+
-        '</div>'+
-        '<div class="search-all-hint">O navegador bloqueia abrir várias abas de uma vez sozinho — depois de gerar, clique em cada transportadora abaixo.</div>'+
-        '<div class="search-all-links" id="search-all-links"></div>'+
-        '</div>';
-    }
     if(!blocks.length){
       content.innerHTML = '<div class="empty">Nenhum bloco nesta aba ainda.</div>';
     } else {
@@ -610,8 +597,7 @@ a{color:inherit;}
         });
         html += '</div>';
       });
-      content.innerHTML = searchAllHtml + html;
-      bindSearchAllEvent(content, trackerBlocks);
+      content.innerHTML = html;
       bindCardEvents(content);
       content.querySelectorAll("[data-addgroup]").forEach(function(el){
         el.addEventListener("click", function(){ openBlockModal(null, tab.id, el.getAttribute("data-addgroup")); });
@@ -725,25 +711,6 @@ a{color:inherit;}
         '</div>';
     }
     return "";
-  }
-
-  function bindSearchAllEvent(root, trackerBlocks){
-    var btn = root.querySelector("#search-all-go");
-    if(!btn) return;
-    var inputEl = root.querySelector("#search-all-nf");
-    var linksEl = root.querySelector("#search-all-links");
-    function go(){
-      var nf = (inputEl.value||"").trim();
-      if(!nf){ toast("Informe o número da NF."); inputEl.focus(); return; }
-      var html = trackerBlocks.map(function(b){
-        var finalUrl = (b.url||"").split("{NF}").join(encodeURIComponent(nf));
-        var name = (b.title||"Rastreio").replace(/\s*—.*$/,"");
-        return '<a class="search-all-chip" href="'+esc(finalUrl)+'" target="_blank" rel="noopener">'+esc(name)+' ↗</a>';
-      }).join("");
-      linksEl.innerHTML = html;
-    }
-    btn.addEventListener("click", go);
-    inputEl.addEventListener("keydown", function(e){ if(e.key === "Enter") go(); });
   }
 
   function bindCardEvents(root){
