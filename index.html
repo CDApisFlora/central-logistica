@@ -155,6 +155,9 @@ a{color:inherit;}
 .search-all-bar{background:var(--surface);border:1px solid var(--accent);border-radius:var(--radius);padding:14px 16px;margin-bottom:18px;box-shadow:var(--shadow);}
 .search-all-label{font-weight:600;font-size:14px;margin-bottom:8px;}
 .search-all-hint{font-size:11.5px;color:var(--muted);margin-top:6px;}
+.search-all-links{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;}
+.search-all-chip{display:inline-flex;align-items:center;gap:4px;padding:7px 12px;border-radius:99px;background:var(--teal-bg);color:var(--teal);font-size:12.5px;font-weight:600;text-decoration:none;border:1px solid var(--teal);}
+.search-all-chip:hover{background:var(--teal);color:#fff;}
 .cred-label{color:var(--muted);font-family:var(--sans);font-size:11px;min-width:42px;}
 .cred-val{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .icon-btn{border:none;background:transparent;color:var(--muted);padding:2px 5px;border-radius:5px;font-size:13px;text-decoration:none;display:inline-flex;align-items:center;}
@@ -569,9 +572,10 @@ a{color:inherit;}
         '<div class="search-all-label">🔎 Buscar NF em todas as transportadoras desta aba</div>'+
         '<div class="tracker-row">'+
           '<input type="text" class="tracker-input" id="search-all-nf" placeholder="Número da NF" inputmode="numeric">'+
-          '<button class="btn btn-primary tracker-go" id="search-all-go">Buscar em todas ↗</button>'+
+          '<button class="btn btn-primary tracker-go" id="search-all-go">Gerar links ↗</button>'+
         '</div>'+
-        '<div class="search-all-hint">Abre uma aba nova por transportadora ('+trackerBlocks.length+'). Se o navegador bloquear, libere pop-ups para este site.</div>'+
+        '<div class="search-all-hint">O navegador bloqueia abrir várias abas de uma vez sozinho — depois de gerar, clique em cada transportadora abaixo.</div>'+
+        '<div class="search-all-links" id="search-all-links"></div>'+
         '</div>';
     }
     if(!blocks.length){
@@ -727,13 +731,16 @@ a{color:inherit;}
     var btn = root.querySelector("#search-all-go");
     if(!btn) return;
     var inputEl = root.querySelector("#search-all-nf");
+    var linksEl = root.querySelector("#search-all-links");
     function go(){
       var nf = (inputEl.value||"").trim();
       if(!nf){ toast("Informe o número da NF."); inputEl.focus(); return; }
-      trackerBlocks.forEach(function(b){
+      var html = trackerBlocks.map(function(b){
         var finalUrl = (b.url||"").split("{NF}").join(encodeURIComponent(nf));
-        if(finalUrl) window.open(finalUrl, "_blank", "noopener");
-      });
+        var name = (b.title||"Rastreio").replace(/\s*—.*$/,"");
+        return '<a class="search-all-chip" href="'+esc(finalUrl)+'" target="_blank" rel="noopener">'+esc(name)+' ↗</a>';
+      }).join("");
+      linksEl.innerHTML = html;
     }
     btn.addEventListener("click", go);
     inputEl.addEventListener("keydown", function(e){ if(e.key === "Enter") go(); });
