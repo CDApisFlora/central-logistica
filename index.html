@@ -152,6 +152,9 @@ a{color:inherit;}
 .tracker-input:focus{outline:none;border-color:var(--accent);}
 .tracker-go{white-space:nowrap;padding:8px 14px;font-size:13px;}
 .card-type-tracker{border-left-color:var(--teal);}
+.search-all-bar{background:var(--surface);border:1px solid var(--accent);border-radius:var(--radius);padding:14px 16px;margin-bottom:18px;box-shadow:var(--shadow);}
+.search-all-label{font-weight:600;font-size:14px;margin-bottom:8px;}
+.search-all-hint{font-size:11.5px;color:var(--muted);margin-top:6px;}
 .cred-label{color:var(--muted);font-family:var(--sans);font-size:11px;min-width:42px;}
 .cred-val{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .icon-btn{border:none;background:transparent;color:var(--muted);padding:2px 5px;border-radius:5px;font-size:13px;text-decoration:none;display:inline-flex;align-items:center;}
@@ -559,6 +562,18 @@ a{color:inherit;}
     titleEl.textContent = (tab.icon||"") + " " + tab.name;
 
     var blocks = state.blocks.filter(function(b){ return b.tabId === tab.id; });
+    var trackerBlocks = blocks.filter(function(b){ return b.type === "tracker"; });
+    var searchAllHtml = "";
+    if(trackerBlocks.length >= 2){
+      searchAllHtml = '<div class="search-all-bar">'+
+        '<div class="search-all-label">🔎 Buscar NF em todas as transportadoras desta aba</div>'+
+        '<div class="tracker-row">'+
+          '<input type="text" class="tracker-input" id="search-all-nf" placeholder="Número da NF" inputmode="numeric">'+
+          '<button class="btn btn-primary tracker-go" id="search-all-go">Buscar em todas ↗</button>'+
+        '</div>'+
+        '<div class="search-all-hint">Abre uma aba nova por transportadora ('+trackerBlocks.length+'). Se o navegador bloquear, libere pop-ups para este site.</div>'+
+        '</div>';
+    }
     if(!blocks.length){
       content.innerHTML = '<div class="empty">Nenhum bloco nesta aba ainda.</div>';
     } else {
@@ -591,7 +606,8 @@ a{color:inherit;}
         });
         html += '</div>';
       });
-      content.innerHTML = html;
+      content.innerHTML = searchAllHtml + html;
+      bindSearchAllEvent(content, trackerBlocks);
       bindCardEvents(content);
       content.querySelectorAll("[data-addgroup]").forEach(function(el){
         el.addEventListener("click", function(){ openBlockModal(null, tab.id, el.getAttribute("data-addgroup")); });
@@ -705,6 +721,22 @@ a{color:inherit;}
         '</div>';
     }
     return "";
+  }
+
+  function bindSearchAllEvent(root, trackerBlocks){
+    var btn = root.querySelector("#search-all-go");
+    if(!btn) return;
+    var inputEl = root.querySelector("#search-all-nf");
+    function go(){
+      var nf = (inputEl.value||"").trim();
+      if(!nf){ toast("Informe o número da NF."); inputEl.focus(); return; }
+      trackerBlocks.forEach(function(b){
+        var finalUrl = (b.url||"").split("{NF}").join(encodeURIComponent(nf));
+        if(finalUrl) window.open(finalUrl, "_blank", "noopener");
+      });
+    }
+    btn.addEventListener("click", go);
+    inputEl.addEventListener("keydown", function(e){ if(e.key === "Enter") go(); });
   }
 
   function bindCardEvents(root){
