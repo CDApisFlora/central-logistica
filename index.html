@@ -136,7 +136,9 @@ a{color:inherit;}
 .card-type-file{border-left-color:var(--muted);}
 .card-text{grid-column:1/-1;}
 .card-title-row{display:flex;align-items:center;gap:9px;}
-.card-avatar{width:24px;height:24px;border-radius:7px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;}
+.card-avatar{width:24px;height:24px;border-radius:7px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;overflow:hidden;}
+.card-avatar-img{background:var(--surface-2);border:1px solid var(--border);}
+.card-avatar-img img{width:100%;height:100%;object-fit:contain;padding:2px;box-sizing:border-box;}
 .card-title{font-weight:600;font-size:14.5px;line-height:1.3;}
 .card-body{font-size:13.5px;color:var(--muted);white-space:pre-wrap;line-height:1.5;}
 .card-link{display:block;text-decoration:none;}
@@ -183,6 +185,9 @@ a{color:inherit;}
 .type-row{display:flex;gap:6px;}
 .type-opt{flex:1;padding:7px 0;text-align:center;border-radius:7px;border:1px solid var(--border);background:transparent;font-size:12.5px;color:var(--muted);}
 .type-opt.sel{background:var(--accent-bg);color:var(--accent-ink);border-color:var(--accent);font-weight:600;}
+.avatar-preview-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+.avatar-preview{width:34px;height:34px;border-radius:8px;object-fit:contain;background:var(--surface-2);border:1px solid var(--border);padding:3px;box-sizing:border-box;}
+.avatar-preview-row .btn{padding:5px 10px;font-size:12px;}
 .modal-actions{display:flex;justify-content:space-between;gap:8px;margin-top:18px;}
 .btn{padding:9px 16px;border-radius:7px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-size:13.5px;font-weight:500;}
 .btn-primary{background:var(--accent);border-color:var(--accent);color:#1A1204;font-weight:600;}
@@ -335,7 +340,10 @@ a{color:inherit;}
     for(var i=0;i<str.length;i++){ h = (h*31 + str.charCodeAt(i)) | 0; }
     return AVATAR_PALETTE[Math.abs(h) % AVATAR_PALETTE.length];
   }
-  function avatarHtml(groupName){
+  function avatarHtml(groupName, avatarUrl){
+    if(avatarUrl){
+      return '<span class="card-avatar card-avatar-img"><img src="'+esc(avatarUrl)+'" alt="" loading="lazy"></span>';
+    }
     if(!groupName) return "";
     var letter = groupName.trim().charAt(0).toUpperCase();
     var color = hashColor(groupName);
@@ -428,6 +436,54 @@ a{color:inherit;}
     if(norm) applyCustomColor(norm);
     else{ e.target.value = ""; toast("Hexadecimal inválido — use o formato #RRGGBB."); }
   });
+
+  // ---------- dynamic web-app manifest (installed-app icon) ----------
+  (function initManifest(){
+    var icon192 =
+      "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"
+      "AABJRU5ErkJggg==";
+    var icon512 =
+      "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";
+    var manifest = {
+      name: "Central Logística — Apis Flora",
+      short_name: "Central Log.",
+      start_url: ".",
+      display: "standalone",
+      background_color: "#0D1310",
+      theme_color: "#0D1310",
+      icons: [
+        { src: "data:image/png;base64," + icon192, sizes: "192x192", type: "image/png", purpose: "any maskable" },
+        { src: "data:image/png;base64," + icon512, sizes: "512x512", type: "image/png", purpose: "any maskable" }
+      ]
+    };
+    try{
+      var blob = new Blob([JSON.stringify(manifest)], { type: "application/manifest+json" });
+      var link = document.createElement("link");
+      link.rel = "manifest";
+      link.href = URL.createObjectURL(blob);
+      document.head.appendChild(link);
+    }catch(e){}
+  })();
 
   // ---------- welcome screen ----------
   (function initWelcome(){
@@ -713,7 +769,7 @@ a{color:inherit;}
       '<button class="icon-btn" data-del="'+b.id+'" title="Excluir">✕</button>'+
       '</div>') : "";
 
-    var avatar = avatarHtml(b.group);
+    var avatar = avatarHtml(b.group, b.avatar_url);
 
     if(b.type === "text"){
       return '<div class="card card-text">'+actions+
@@ -925,6 +981,13 @@ a{color:inherit;}
       '</div></div>'+
       '<div class="field"><label>Grupo (opcional — agrupa cards com o mesmo nome)</label><input type="text" id="f-group" value="'+esc(groupVal)+'"></div>'+
       '<div class="field"><label>Título</label><input type="text" id="f-title" value="'+esc(block? block.title||"" : "")+'"></div>'+
+      '<div class="field" id="f-avatar-field">'+
+        '<label>Logo (opcional — substitui a inicial colorida)</label>'+
+        (block && block.avatar_url ?
+          '<div class="avatar-preview-row" id="f-avatar-preview-row"><img class="avatar-preview" src="'+esc(block.avatar_url)+'" alt=""><button type="button" class="btn btn-danger" id="f-avatar-remove">Remover logo</button></div>'
+          : '')+
+        '<input type="file" id="f-avatar-file" accept="image/*">'+
+      '</div>'+
       '<div id="f-dynamic"></div>'+
       '<div class="modal-actions">'+
         '<div>'+(isNew? "" : '<button class="btn btn-danger" id="f-del">Excluir</button>')+'</div>'+
@@ -958,15 +1021,26 @@ a{color:inherit;}
           '<div class="field"><label>Observação (opcional)</label><textarea id="f-body">'+esc(block? block.body||"" : "")+'</textarea></div>';
       }
     }
+    var avatarField = overlay.querySelector("#f-avatar-field");
     function selectType(t){
       type = t;
       overlay.querySelectorAll(".type-opt").forEach(function(el){ el.classList.toggle("sel", el.dataset.t===t); });
       renderDynamic(t);
+      if(avatarField) avatarField.style.display = (t === "text") ? "none" : "";
     }
     overlay.querySelectorAll(".type-opt").forEach(function(el){
       el.addEventListener("click", function(){ selectType(el.dataset.t); });
     });
     selectType(type);
+
+    var avatarRemoveBtn = overlay.querySelector("#f-avatar-remove");
+    if(avatarRemoveBtn){
+      avatarRemoveBtn.addEventListener("click", function(){
+        overlay.dataset.avatarRemoved = "1";
+        var row = overlay.querySelector("#f-avatar-preview-row");
+        if(row) row.remove();
+      });
+    }
 
     overlay.addEventListener("click", function(e){ if(e.target===overlay) document.body.removeChild(overlay); });
     overlay.querySelector("#f-cancel").addEventListener("click", function(){ document.body.removeChild(overlay); });
@@ -988,6 +1062,23 @@ a{color:inherit;}
       data.body = bodyEl ? bodyEl.value.trim() : null;
       data.url = null; data.login = null; data.password = null;
       data.file_url = null; data.file_name = null; data.file_path = null;
+      data.avatar_url = (!isNew && block.avatar_url) ? block.avatar_url : null;
+      if(overlay.dataset.avatarRemoved === "1"){ data.avatar_url = null; }
+      var avatarInput = overlay.querySelector("#f-avatar-file");
+      var avatarFile = type !== "text" && avatarInput && avatarInput.files && avatarInput.files[0];
+      if(avatarFile){
+        if(avatarFile.size > 4*1024*1024){ toast("Imagem da logo muito grande (máx. 4MB)."); return; }
+        var saveBtnAv = overlay.querySelector("#f-save");
+        saveBtnAv.disabled = true; saveBtnAv.textContent = "Enviando logo…";
+        var safeAvName = avatarFile.name.replace(/[^a-zA-Z0-9.\-_]/g, "_");
+        var avPath = "avatars/"+Date.now().toString(36)+"-"+Math.random().toString(36).slice(2,8)+"-"+safeAvName;
+        var avUpRes = await sb.storage.from("files").upload(avPath, avatarFile, {upsert:true});
+        saveBtnAv.disabled = false; saveBtnAv.textContent = "Salvar";
+        if(avUpRes.error){ toast("Erro ao enviar logo: "+avUpRes.error.message); return; }
+        var avPub = sb.storage.from("files").getPublicUrl(avPath);
+        data.avatar_url = avPub.data.publicUrl;
+      }
+      if(type === "text"){ data.avatar_url = null; }
       if(type === "link"){
         data.url = (overlay.querySelector("#f-url").value||"").trim();
         if(!data.url){ toast("Informe a URL."); return; }
