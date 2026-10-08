@@ -135,8 +135,8 @@ a{color:inherit;}
 .card-type-credential{border-left-color:var(--accent);}
 .card-type-file{border-left-color:var(--muted);}
 .card-text{grid-column:1/-1;}
-.card-title-row{display:flex;align-items:center;gap:11px;}
-.card-avatar{width:40px;height:40px;border-radius:9px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;color:#fff;overflow:hidden;}
+.card-title-row{display:flex;align-items:center;gap:12px;}
+.card-avatar{width:46px;height:46px;border-radius:10px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:700;color:#fff;overflow:hidden;}
 .card-avatar-img{background:var(--surface-2);border:1px solid var(--border);}
 .card-avatar-img img{width:100%;height:100%;object-fit:contain;padding:4px;box-sizing:border-box;}
 .card-title{font-weight:600;font-size:14.5px;line-height:1.3;}
@@ -188,6 +188,15 @@ a{color:inherit;}
 .avatar-preview-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
 .avatar-preview{width:48px;height:48px;border-radius:9px;object-fit:contain;background:var(--surface-2);border:1px solid var(--border);padding:4px;box-sizing:border-box;}
 .avatar-preview-row .btn{padding:5px 10px;font-size:12px;}
+.av-editor{margin-top:10px;display:flex;flex-direction:column;align-items:center;gap:8px;}
+#f-av-canvas{width:200px;height:200px;border-radius:14px;border:1px solid var(--border);cursor:grab;touch-action:none;
+  background:repeating-conic-gradient(var(--surface-2) 0% 25%, var(--surface) 0% 50%) 50% / 16px 16px;}
+#f-av-canvas.dragging{cursor:grabbing;}
+.av-controls{display:flex;align-items:center;gap:8px;width:100%;}
+.av-controls input[type=range]{flex:1;accent-color:var(--accent);}
+.av-zoom-ico{color:var(--muted);font-size:14px;}
+.av-controls .btn{padding:5px 10px;font-size:12px;white-space:nowrap;}
+.av-hint{font-size:11px;color:var(--muted);text-align:center;}
 .modal-actions{display:flex;justify-content:space-between;gap:8px;margin-top:18px;}
 .btn{padding:9px 16px;border-radius:7px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-size:13.5px;font-weight:500;}
 .btn-primary{background:var(--accent);border-color:var(--accent);color:#1A1204;font-weight:600;}
@@ -987,6 +996,16 @@ a{color:inherit;}
           '<div class="avatar-preview-row" id="f-avatar-preview-row"><img class="avatar-preview" src="'+esc(block.avatar_url)+'" alt=""><button type="button" class="btn btn-danger" id="f-avatar-remove">Remover logo</button></div>'
           : '')+
         '<input type="file" id="f-avatar-file" accept="image/*">'+
+        '<div class="av-editor" id="f-av-editor" style="display:none;">'+
+          '<canvas id="f-av-canvas" width="256" height="256"></canvas>'+
+          '<div class="av-controls">'+
+            '<span class="av-zoom-ico">−</span>'+
+            '<input type="range" id="f-av-zoom" min="0.5" max="5" step="0.01" value="1">'+
+            '<span class="av-zoom-ico">＋</span>'+
+            '<button type="button" class="btn" id="f-av-reset">Centralizar</button>'+
+          '</div>'+
+          '<div class="av-hint">Arraste a imagem para mover · use o controle ou a rodinha do mouse para dar zoom</div>'+
+        '</div>'+
       '</div>'+
       '<div id="f-dynamic"></div>'+
       '<div class="modal-actions">'+
@@ -1033,6 +1052,67 @@ a{color:inherit;}
     });
     selectType(type);
 
+    // ----- mini editor de logo (zoom + arrastar) -----
+    var avEd = { ready:false, img:null, zoom:1, offX:0, offY:0 };
+    var avFileInput = overlay.querySelector("#f-avatar-file");
+    var avEditorEl = overlay.querySelector("#f-av-editor");
+    var avCanvas = overlay.querySelector("#f-av-canvas");
+    var avZoom = overlay.querySelector("#f-av-zoom");
+    var avCtx = avCanvas.getContext("2d");
+    function avDraw(){
+      var S = avCanvas.width;
+      avCtx.clearRect(0,0,S,S);
+      if(!avEd.img) return;
+      var w = avEd.img.naturalWidth || S, h = avEd.img.naturalHeight || S;
+      var base = Math.min(S/w, S/h);
+      var s = base * avEd.zoom;
+      var dw = w*s, dh = h*s;
+      avCtx.imageSmoothingQuality = "high";
+      avCtx.drawImage(avEd.img, S/2 - dw/2 + avEd.offX, S/2 - dh/2 + avEd.offY, dw, dh);
+    }
+    function avReset(){ avEd.zoom = 1; avEd.offX = 0; avEd.offY = 0; avZoom.value = "1"; avDraw(); }
+    avFileInput.addEventListener("change", function(){
+      var f = avFileInput.files && avFileInput.files[0];
+      avEd.ready = false; avEd.img = null; avEditorEl.style.display = "none";
+      if(!f) return;
+      if(f.size > 4*1024*1024){ toast("Imagem da logo muito grande (máx. 4MB)."); avFileInput.value = ""; return; }
+      var url = URL.createObjectURL(f);
+      var im = new Image();
+      im.onload = function(){
+        avEd.img = im; avEd.ready = true;
+        avEditorEl.style.display = "flex";
+        avReset();
+      };
+      im.onerror = function(){ toast("Não consegui abrir essa imagem."); avFileInput.value = ""; };
+      im.src = url;
+    });
+    avZoom.addEventListener("input", function(){ avEd.zoom = parseFloat(avZoom.value) || 1; avDraw(); });
+    overlay.querySelector("#f-av-reset").addEventListener("click", avReset);
+    avCanvas.addEventListener("wheel", function(e){
+      e.preventDefault();
+      var z = avEd.zoom * (e.deltaY < 0 ? 1.08 : 1/1.08);
+      avEd.zoom = Math.max(0.5, Math.min(5, z));
+      avZoom.value = String(avEd.zoom);
+      avDraw();
+    }, { passive:false });
+    var avDrag = null;
+    avCanvas.addEventListener("pointerdown", function(e){
+      avDrag = { x:e.clientX, y:e.clientY };
+      avCanvas.setPointerCapture(e.pointerId);
+      avCanvas.classList.add("dragging");
+    });
+    avCanvas.addEventListener("pointermove", function(e){
+      if(!avDrag) return;
+      var k = avCanvas.width / avCanvas.clientWidth;
+      avEd.offX += (e.clientX - avDrag.x) * k;
+      avEd.offY += (e.clientY - avDrag.y) * k;
+      avDrag.x = e.clientX; avDrag.y = e.clientY;
+      avDraw();
+    });
+    function avEnd(){ avDrag = null; avCanvas.classList.remove("dragging"); }
+    avCanvas.addEventListener("pointerup", avEnd);
+    avCanvas.addEventListener("pointercancel", avEnd);
+
     var avatarRemoveBtn = overlay.querySelector("#f-avatar-remove");
     if(avatarRemoveBtn){
       avatarRemoveBtn.addEventListener("click", function(){
@@ -1064,15 +1144,15 @@ a{color:inherit;}
       data.file_url = null; data.file_name = null; data.file_path = null;
       data.avatar_url = (!isNew && block.avatar_url) ? block.avatar_url : null;
       if(overlay.dataset.avatarRemoved === "1"){ data.avatar_url = null; }
-      var avatarInput = overlay.querySelector("#f-avatar-file");
-      var avatarFile = type !== "text" && avatarInput && avatarInput.files && avatarInput.files[0];
-      if(avatarFile){
-        if(avatarFile.size > 4*1024*1024){ toast("Imagem da logo muito grande (máx. 4MB)."); return; }
+      var avBlob = null;
+      if(type !== "text" && avEd.ready){
+        avBlob = await new Promise(function(res){ avCanvas.toBlob(res, "image/png"); });
+      }
+      if(avBlob){
         var saveBtnAv = overlay.querySelector("#f-save");
         saveBtnAv.disabled = true; saveBtnAv.textContent = "Enviando logo…";
-        var safeAvName = avatarFile.name.replace(/[^a-zA-Z0-9.\-_]/g, "_");
-        var avPath = "avatars/"+Date.now().toString(36)+"-"+Math.random().toString(36).slice(2,8)+"-"+safeAvName;
-        var avUpRes = await sb.storage.from("files").upload(avPath, avatarFile, {upsert:true});
+        var avPath = "avatars/"+Date.now().toString(36)+"-"+Math.random().toString(36).slice(2,8)+".png";
+        var avUpRes = await sb.storage.from("files").upload(avPath, avBlob, {upsert:true, contentType:"image/png"});
         saveBtnAv.disabled = false; saveBtnAv.textContent = "Salvar";
         if(avUpRes.error){ toast("Erro ao enviar logo: "+avUpRes.error.message); return; }
         var avPub = sb.storage.from("files").getPublicUrl(avPath);
